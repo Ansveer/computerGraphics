@@ -1,4 +1,4 @@
-unit Display;
+﻿unit Display;
 
 interface
 
@@ -51,5 +51,5 @@ begin
     gr := GraphWindowGraphics;
     ptr := new System.IntPtr(@LB[0]);
     bmp := new System.Drawing.Bitmap(SizeX, SizeY, SizeX*4, System.Drawing.Imaging.PixelFormat.Format32bppRgb, ptr);
-    SetGraphABCIO;
+    SetConsoleIO;
 end.

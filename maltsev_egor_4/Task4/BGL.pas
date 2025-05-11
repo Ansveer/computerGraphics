@@ -42,6 +42,7 @@ procedure VLine(x, y1, y2: integer);
 
 procedure Circle(xc, yc, R: integer);
 
+procedure DrawPoly(n : integer; xy : tPoly);
 procedure FloodFill(x, y: integer; bord: tPixel);
 procedure FillPoly(n: integer; p: tPoly);
 
@@ -389,27 +390,115 @@ begin
     until yy > y + 1;
 end;
 
-procedure Edge(x1, y1, x2, y2: integer);
+//procedure Edge(x1, y1, x2, y2: integer);
+//var
+//    k, xf: double;
+//    y, yend: integer;
+//begin
+//    k := (x2 - x1) / (y2 - y1);
+//    if y1 < y2 then begin
+//        y := y1; yend := y2; xf := x1; end
+//    else begin
+//        y := y2; yend := y1; xf := x2;
+//    end;  
+//    while y < yend do
+//    begin
+//        y := y + 1;
+//        xf := xf + k;
+////        if (YXbuf[y].m <> 0) and (YXbuf[y].x[YXbuf[y].m] = xf) then
+////            continue;
+//        inc(YXbuf[y].m);
+//        YXbuf[y].x[YXbuf[y].m] := round(xf);
+//    end
+//end;
+
+procedure Bresenham(x1, y1, x2, y2: integer);
+{ Алгоритм Брезенхэма с сохранением растровой развертки }
 var
-    k, xf: double;
-    y, yend: integer;
+   x, y, xend, yend: integer;
+   d, inc1, inc2: integer;
+   dx, dy: integer;
+   s: integer;
 begin
-    k := (x2 - x1) / (y2 - y1);
-    if y1 < y2 then begin
-        y := y1; yend := y2; xf := x1; end
-    else begin
-        y := y2; yend := y1; xf := x2;
-    end;  
-    while y < yend do
-    begin
-        y := y + 1;
-        xf := xf + k;
-        inc(YXbuf[y].m);
-        YXbuf[y].x[YXbuf[y].m] := round(xf);
-    end
+   dx := abs(x2 - x1);
+   dy := abs(y2 - y1);
+   if dx > dy then begin
+      if x1 < x2 then begin
+         x := x1;
+         xend := x2;
+         y := y1;
+         if y1 <= y2 then 
+            s := 1
+         else
+            s := -1
+         end
+      else begin
+         x := x2;
+         xend := x1;
+         y := y2;
+         if y1 > y2 then 
+            s := 1
+         else
+            s := -1;
+      end;
+      inc1 := 2*dy;
+      inc2 := 2*(dy-dx);
+      d := 2*dy - dx;
+      if s < 0 then begin
+         inc(YXbuf[y].m);
+         YXbuf[y].x[YXbuf[y].m] := x;
+      end;   
+      while x < xend do begin
+         x := x + 1;
+         if d < 0 then
+            d := d + inc1
+         else begin 
+            y := y + s;
+            d := d + inc2;
+            inc(YXbuf[y].m);
+            YXbuf[y].x[YXbuf[y].m] := x;
+         end;
+      end;
+      if s < 0 then
+         dec(YXbuf[y].m);
+      end
+   else begin
+      if y1 < y2 then begin
+         y := y1;
+         yend := y2;
+         x := x1;
+         if x1 < x2 then 
+            s := 1
+         else
+            s := -1;
+         end
+      else begin
+         y := y2;
+         yend := y1;
+         x := x2;
+         if x2 < x1 then 
+            s := 1
+         else
+            s := -1;
+      end;
+      inc1 := 2*dx;
+      inc2 := 2*(dx-dy);
+      d := 2*dx - dy;
+      while y < yend do begin
+         y := y + 1;
+         if d < 0 then
+            d := d + inc1
+         else begin 
+            x := x + s;
+            d := d + inc2
+         end;
+         inc(YXbuf[y].m);
+         YXbuf[y].x[YXbuf[y].m] := x;
+      end
+   end;
 end;
 
-procedure Sort(var a: tXbuf);
+procedure Sort(a: tXbuf);
 var
     i, j, y: integer;
 begin
@@ -426,9 +515,125 @@ begin
     end;
 end;
 
-procedure DrawFillPoly(n: integer; p: tPoly);
+// тут
+procedure DrawPoly(n : integer; xy : tPoly);
 var
-    y, ymin, ymax, i, i1, i2: integer;
+    x1, y1, x2, y2: integer;
+    i  : integer;
+begin
+    x1 := xy[n - 1].x;
+    y1 := xy[n - 1].y;
+    for i := 0 to n-1 do begin
+        x2 := xy[i].x;
+        y2 := xy[i].y;
+        if (n > 2) and (x1 = x2) and ((x1 = xleft) or (x1 = xright)) then begin
+            x1 := x2;
+            y1 := y2;
+            continue;
+        end
+        else if (n > 2) and (y1 = y2) and ((y1 = ytop) or (y1 = ybottom)) then begin
+            x1 := x2;
+            y1 := y2;
+            continue;
+        end;
+        Line(x1, y1, x2, y2);
+        x1 := x2;
+        y1 := y2;
+    end;
+end;
+
+procedure VerticalEdge(x, n: integer; p: tPoly);
+var
+    i, y, x1, y1, x2, y2: integer;
+    inside, draw: Boolean;
+    inside1, inside2: Boolean;
+begin
+    for y := 0 to GetMaxY do begin
+        x1 := p[n - 1].x;
+        y1 := p[n - 1].y;
+        draw := false;
+        for i := 0 to (n - 1) do begin
+            x2 := p[i].x;
+            y2 := p[i].y;
+            
+            inside1 := ( ((y2 <= y) and (y < y1)) or ((y1 <= y) and (y < y2)) )
+                        and (x = ( ( ((x1 - x2) * (y - y2)) div (y1 - y2) ) + x2 ));
+            inside2 := ( ((y2 <= y) and (y < y1)) or ((y1 <= y) and (y < y2)) )
+                        and (x = ( ( ((x2 - x1) * (y - y1)) div (y2 - y1) ) + x1 ));
+            inside := inside1 or inside2; 
+            
+            if inside then
+                draw := not draw;
+            
+            x1 := x2;
+            y1 := y2;
+        end;
+        if draw then
+            PutPixel(x, y, CC);
+    end;
+end;
+
+procedure HorizontalEdge(y, n: integer; p: tPoly);
+var
+    i, x, x1, y1, x2, y2: integer;
+    inside, draw, draw2: Boolean;
+    inside1, inside2: Boolean;
+    inside3, inside4, inside5: Boolean;
+begin
+    for x := 0 to GetMaxX do begin
+        x1 := p[n - 1].x;
+        y1 := p[n - 1].y;
+        draw := false;
+        draw2 := false;
+        for i := 0 to (n - 1) do begin
+            x2 := p[i].x;
+            y2 := p[i].y;
+            
+            if y = 0 then begin
+                inside3 := ( ((x2 <= x) and (x < x1)) or ((x1 <= x) and (x < x2)) )
+                            and (y < ( ( ((y1 - y2) * (x - x2)) div (x1 - x2) ) + y2 ));
+                inside4 := ( ((x2 <= x) and (x < x1)) or ((x1 <= x) and (x < x2)) )
+                            and (y < ( ( ((y2 - y1) * (x - x1)) div (x2 - x1) ) + y1 ));
+                inside5 := inside3 or inside4;
+            end;
+            
+            inside1 := ( ((x2 <= x) and (x < x1)) or ((x1 <= x) and (x < x2)) )
+                        and (y = ( ( ((y1 - y2) * (x - x2)) div (x1 - x2) ) + y2 ));
+            inside2 := ( ((x2 <= x) and (x < x1)) or ((x1 <= x) and (x < x2)) )
+                        and (y = ( ( ((y2 - y1) * (x - x1)) div (x2 - x1) ) + y1 ));
+            inside := inside1 or inside2;
+                       
+            if inside then
+                draw := not draw;
+            
+            if inside5 then
+                draw2 := not draw2;
+            
+            x1 := x2;
+            y1 := y2;
+        end;
+        if draw or draw2 then
+            PutPixel(x, y, CC);
+    end;
+end;
+
+procedure DrawEdges(n: integer; p: tPoly);
+var
+    i, j, k: integer;
+    x, y: integer;
+    x1, y1, x2, y2: integer;
+    inside, draw: Boolean;
+begin
+    VerticalEdge(0, n, p);
+    VerticalEdge(GetMaxX, n, p);
+    HorizontalEdge(0, n, p);
+    HorizontalEdge(GetMaxY, n, p);   
+end;
+
+// тут
+procedure DrawFillPoly(n, nOrig: integer; p, pOrig: tPoly);
+var
+    y, ymin, ymax, i, i1, i2, j: integer;
 begin
     ymin := p[0].y;
     ymax := ymin;
@@ -444,7 +649,7 @@ begin
     for i2 := 0 to n - 1 do
     begin
         if p[i1].y <> p[i2].y then
-            Edge(p[i1].x, p[i1].y, p[i2].x, p[i2].y);
+            Bresenham(p[i1].x, p[i1].y, p[i2].x, p[i2].y);
         i1 := i2;
     end;   
     
@@ -454,10 +659,19 @@ begin
         i := 1;
         while i < YXbuf[y].m do
         begin
+            if (YXbuf[y].x[i] = YXbuf[y].x[i + 1])
+                and ((YXbuf[y].x[i] = xleft) or (YXbuf[y].x[i] = xright)) then begin
+                i := i + 2;
+                continue;
+            end;
             HLine(YXbuf[y].x[i], y, YXbuf[y].x[i + 1]);
             i := i + 2;
         end;   
-    end;   
+    end;
+    
+    DrawPoly(n, p);
+    DrawEdges(nOrig, pOrig);
+    Writeln('end');
 end;
 
 procedure SetViewPort(xl, yt, xr, yb: integer);
@@ -670,62 +884,24 @@ begin
     end;
 end;
 
-{ CC - тот которым рисуем }
-{ BC - тот, который на фоне }
-procedure ClearTop;
-begin
-    for var i := xleft to xright do
-        if (LB[SizeX*ytop + i] = CC) and (LB[SizeX*ytop + SizeX + i] = BC) then
-            LB[SizeX*ytop + i] := BC;
-end;
-
-procedure ClearRight;
-begin
-    for var i := ytop to ybottom do
-        if (LB[SizeX*i + xright] = CC) and (LB[SizeX*i + xright - 1] = BC) then
-            LB[SizeX*i + xright] := BC;
-end;
-
-procedure ClearBottom;
-begin
-    for var i := xright downto xleft do
-        if (LB[SizeX*ybottom + i] = CC) and (LB[SizeX*ybottom + i - SizeX] = BC) then
-            LB[SizeX*ybottom + i] := BC;
-end;
-
-procedure ClearLeft;
-begin
-    for var i := ybottom downto ytop do begin
-        if (LB[SizeX*i + xleft] = CC) and (LB[SizeX*i + 1 + xleft] = BC) then
-            LB[SizeX*i + xleft] := BC;
-   end;
-end;
-
-procedure ClearBorder;
-begin
-    ClearTop;
-    ClearRight;
-    ClearBottom;
-    ClearLeft;
-end;
-
+// тут
 procedure FillPoly(n: integer; p: tPoly);
 var
-    p1, p2: tPoly;
+    p1, p2, pOrig: tPoly;
     m1, m2: integer;
     i: integer;
 begin
     SetLength(p1, 2 * n);
     SetLength(p2, 2 * n);
+    SetLength(pOrig, n);
     for i := 0 to n - 1 do begin
-        p1[i].x := p[i].x + xleft;
-        p1[i].y := p[i].y + ytop;
+        pOrig[i].x := p[i].x + xleft;
+        pOrig[i].y := p[i].y + ytop;
     end;
+
 //    Test(n, p1);
-//    ClipLeft(n, p1, m2, p2);
+    ClipLeft(n, pOrig, m2, p2);
 //    Test(m2, p2);
-//    ClipTop(m2, p2, m1, p1);
-    ClipLeft(n, p1, m2, p2);
     if m2 > 0 then begin
         ClipTop(m2, p2, m1, p1);
         if m1 > 0 then begin
@@ -733,11 +909,11 @@ begin
             if m2 > 0 then begin
                 ClipBottom(m2, p2, m1, p1);
                 if m1 > 0 then
-                    DrawFillPoly(m1, p1);
+//                    Test(m1, p1);
+                    DrawFillPoly(m1, n, p1, pOrig);
             end;
         end;
     end;
-    ClearBorder;
 end;
 
 begin
