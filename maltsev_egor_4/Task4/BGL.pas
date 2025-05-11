@@ -498,7 +498,7 @@ begin
    end;
 end;
 
-procedure Sort(a: tXbuf);
+procedure Sort(var a: tXbuf);
 var
     i, j, y: integer;
 begin
@@ -642,6 +642,7 @@ begin
             ymin := p[i].y
         else if p[i].y > ymax then
             ymax := p[i].y;     
+        
     for y := ymin to ymax do
         YXbuf[y].m := 0;
     
@@ -899,9 +900,7 @@ begin
         pOrig[i].y := p[i].y + ytop;
     end;
 
-//    Test(n, p1);
     ClipLeft(n, pOrig, m2, p2);
-//    Test(m2, p2);
     if m2 > 0 then begin
         ClipTop(m2, p2, m1, p1);
         if m1 > 0 then begin
@@ -909,7 +908,6 @@ begin
             if m2 > 0 then begin
                 ClipBottom(m2, p2, m1, p1);
                 if m1 > 0 then
-//                    Test(m1, p1);
                     DrawFillPoly(m1, n, p1, pOrig);
             end;
         end;
