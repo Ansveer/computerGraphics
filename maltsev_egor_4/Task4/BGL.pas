@@ -536,19 +536,18 @@ begin
             y1 := y2;
             continue;
         end;
-        Line(x1, y1, x2, y2);
+        Line(x1 - xleft, y1 - ytop, x2 - xleft, y2 - ytop);
         x1 := x2;
         y1 := y2;
     end;
 end;
 
-procedure VerticalEdge(x, n: integer; p: tPoly);
+procedure VerticalEdge(x, n: integer; p: tPoly; ymin, ymax: integer);
 var
     i, y, x1, y1, x2, y2: integer;
     inside, draw: Boolean;
-    inside1, inside2: Boolean;
 begin
-    for y := 0 to GetMaxY do begin
+    for y := ymin to ymax do begin
         x1 := p[n - 1].x;
         y1 := p[n - 1].y;
         draw := false;
@@ -556,31 +555,29 @@ begin
             x2 := p[i].x;
             y2 := p[i].y;
             
-            inside1 := ( ((y2 <= y) and (y < y1)) or ((y1 <= y) and (y < y2)) )
-                        and (x = ( ( ((x1 - x2) * (y - y2)) div (y1 - y2) ) + x2 ));
-            inside2 := ( ((y2 <= y) and (y < y1)) or ((y1 <= y) and (y < y2)) )
-                        and (x = ( ( ((x2 - x1) * (y - y1)) div (y2 - y1) ) + x1 ));
-            inside := inside1 or inside2; 
+            inside := ( ((y2 <= y) and (y < y1)) or ((y1 <= y) and (y < y2)) )
+                        and (x = ( x1 + round((x2 - x1) / (y2 - y1) * (y - y1)) ));
             
-            if inside then
+            if inside then begin
                 draw := not draw;
-            
+                break;
+            end;
+
             x1 := x2;
             y1 := y2;
         end;
         if draw then
-            PutPixel(x, y, CC);
+            PutPixel(x - xleft, y - ytop, CC);
     end;
 end;
 
-procedure HorizontalEdge(y, n: integer; p: tPoly);
+procedure HorizontalEdge(y, n: integer; p: tPoly; xmin, xmax: integer);
 var
     i, x, x1, y1, x2, y2: integer;
-    inside, draw, draw2: Boolean;
-    inside1, inside2: Boolean;
-    inside3, inside4, inside5: Boolean;
+    inside, draw: Boolean;
+    inside2, draw2: Boolean;
 begin
-    for x := 0 to GetMaxX do begin
+    for x := xmin to xmax do begin
         x1 := p[n - 1].x;
         y1 := p[n - 1].y;
         draw := false;
@@ -589,59 +586,62 @@ begin
             x2 := p[i].x;
             y2 := p[i].y;
             
-            if y = 0 then begin
-                inside3 := ( ((x2 <= x) and (x < x1)) or ((x1 <= x) and (x < x2)) )
-                            and (y < ( ( ((y1 - y2) * (x - x2)) div (x1 - x2) ) + y2 ));
-                inside4 := ( ((x2 <= x) and (x < x1)) or ((x1 <= x) and (x < x2)) )
-                            and (y < ( ( ((y2 - y1) * (x - x1)) div (x2 - x1) ) + y1 ));
-                inside5 := inside3 or inside4;
+            if y = ytop then
+                inside2 := ( ((x2 <= x) and (x < x1)) or ((x1 <= x) and (x < x2)) )
+                             and (y < ( y1 + round((y2 - y1) / (x2 - x1) * (x - x1)) ));
+
+            inside := ( ((x2 <= x) and (x < x1)) or ((x1 <= x) and (x < x2)) )
+                        and (y = ( y1 + round((y2 - y1) / (x2 - x1) * (x - x1)) ));
+                       
+            if inside then begin
+                draw := not draw;
+                break;
             end;
             
-            inside1 := ( ((x2 <= x) and (x < x1)) or ((x1 <= x) and (x < x2)) )
-                        and (y = ( ( ((y1 - y2) * (x - x2)) div (x1 - x2) ) + y2 ));
-            inside2 := ( ((x2 <= x) and (x < x1)) or ((x1 <= x) and (x < x2)) )
-                        and (y = ( ( ((y2 - y1) * (x - x1)) div (x2 - x1) ) + y1 ));
-            inside := inside1 or inside2;
-                       
-            if inside then
-                draw := not draw;
-            
-            if inside5 then
+            if inside2 then
                 draw2 := not draw2;
             
             x1 := x2;
             y1 := y2;
         end;
         if draw or draw2 then
-            PutPixel(x, y, CC);
+            PutPixel(x - xleft, y - ytop, CC);
     end;
 end;
 
-procedure DrawEdges(n: integer; p: tPoly);
+procedure DrawEdges(n: integer; p: tPoly; xmin, xmax, ymin, ymax: integer);
 var
     i, j, k: integer;
     x, y: integer;
     x1, y1, x2, y2: integer;
     inside, draw: Boolean;
 begin
-    VerticalEdge(0, n, p);
-    VerticalEdge(GetMaxX, n, p);
-    HorizontalEdge(0, n, p);
-    HorizontalEdge(GetMaxY, n, p);   
+    VerticalEdge(xleft, n, p, ymin, ymax);
+    VerticalEdge(xright, n, p, ymin, ymax);
+    HorizontalEdge(ytop, n, p, xmin, xmax);
+    HorizontalEdge(ybottom, n, p, xmin, xmax);   
 end;
 
 // тут
 procedure DrawFillPoly(n, nOrig: integer; p, pOrig: tPoly);
 var
-    y, ymin, ymax, i, i1, i2, j: integer;
+    y, ymin, ymax, xmin, xmax, i, i1, i2, j: integer;
 begin
     ymin := p[0].y;
     ymax := ymin;
-    for i := 0 to n - 1 do
+    xmin := p[0].x;
+    xmax := xmin;
+    for i := 0 to n - 1 do begin
         if p[i].y < ymin then
             ymin := p[i].y
         else if p[i].y > ymax then
-            ymax := p[i].y;     
+            ymax := p[i].y;
+        
+        if p[i].x < xmin then
+            xmin := p[i].x
+        else if p[i].x > xmax then
+            xmax := p[i].x;
+    end;
         
     for y := ymin to ymax do
         YXbuf[y].m := 0;
@@ -666,12 +666,16 @@ begin
                 continue;
             end;
             HLine(YXbuf[y].x[i], y, YXbuf[y].x[i + 1]);
+//            Line(YXbuf[y].x[i], y, YXbuf[y].x[i + 1], y);
             i := i + 2;
         end;   
     end;
     
     DrawPoly(n, p);
-    DrawEdges(nOrig, pOrig);
+    DrawEdges(nOrig, pOrig, xmin, xmax, ymin, ymax);
+//    SetColor(Blue);
+//    PutPixel(200, 0, CC);
+//    SetColor(Red);
     Writeln('end');
 end;
 
@@ -906,6 +910,7 @@ begin
         if m1 > 0 then begin
             ClipRight(m1, p1, m2, p2);
             if m2 > 0 then begin
+                Test(m1, p1);
                 ClipBottom(m2, p2, m1, p1);
                 if m1 > 0 then
                     DrawFillPoly(m1, n, p1, pOrig);
@@ -918,5 +923,5 @@ begin
     SetColor(Black);
     SetBkColor(White);
     ClearDevice;
-    SetViewPort(0, 0, GetMaxX, GetMaxY);
+    SetViewPort(100, 100, GetMaxX, GetMaxY);
 end.

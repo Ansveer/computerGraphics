@@ -1,0 +1,45 @@
+body {
+    position: relative;
+    font-family: 'Trebuchet MS', Helvetica, sans-serif;
+    font-family: 'Noto Sans', sans-serif;
+    background-color: rgba(132, 132, 130, 1);
+    font-size: 17px;
+    min-width: 320px;
+    overflow-x: hidden;
+    height: auto;
+    padding: 0;
+    margin: 0;
+}
+
+.navbar {
+    width: 100%;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.75);
+    background-color: rgba(0, 0, 0, 0.75);
+}
+
+.navbar-menu {
+    text-align: right;
+    margin-top: 0;
+}
+
+.navbar-menu li {
+    display: inline-block;
+    padding-top: 25px;
+    padding-bottom: 25px;
+}
+
+.navbar-menu li a {
+    padding-right: 15px;
+    padding-left: 15px;
+    padding-bottom: 25px;
+    color: #FFFFFF;
+    text-decoration: none;
+    opacity: 0.85;
+    transition: .15s ease-in-out;
+}
+
+.navbar-menu li a:hover {
+    opacity: 1;
+    color: rgba(66, 170, 255);
+    box-shadow: inset 0 -5px 0 0 #42AAFF;
+}
